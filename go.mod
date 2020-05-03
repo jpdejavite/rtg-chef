@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/99designs/gqlgen v0.11.3
 	github.com/go-chi/chi v3.3.2+incompatible
-	github.com/spf13/viper v1.6.3
+	github.com/gorilla/websocket v1.4.0 // indirect
+	github.com/mitchellh/mapstructure v1.1.2 // indirect
 	github.com/vektah/gqlparser/v2 v2.0.1
 )
