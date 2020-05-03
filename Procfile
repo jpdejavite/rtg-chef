@@ -1,1 +1,1 @@
-web: bin/rtg-chef
+web: bin/cmd
