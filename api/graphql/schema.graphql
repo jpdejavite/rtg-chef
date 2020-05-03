@@ -1,0 +1,37 @@
+directive @hasAllRoles (roles: [String]) on FIELD | FIELD_DEFINITION
+
+extend type AppQueries @key(fields: "id") {
+  id: ID! @external
+  recipes: RecipeAppQueries!
+}
+
+type RecipeAppQueries {
+  list(input: RecipeListInput!): [RecipeList!] @hasAllRoles (roles: ["user"])
+}
+
+type RecipeList {
+  total: Int!
+  recipes: [Recipe!]
+}
+
+type Recipe {
+  name: String!
+  description: String!
+}
+
+input RecipeListInput {
+  filter: String
+  limit: Int!
+  offset: Int!
+  orderBy: RecipeOrderBy!
+  direction: RecipeOrderDirection!
+}
+
+enum RecipeOrderBy {
+  name
+}
+
+enum RecipeOrderDirection {
+  asc
+  desc
+}

@@ -1,0 +1,8 @@
+{
+  "name": "rtg-chef",
+  "description": "Rtg chef",
+  "keywords": [
+    "go"
+  ],
+  "repository": "http://github.com/jpdejavite/rtg-chef"
+}

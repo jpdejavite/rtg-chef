@@ -1,0 +1,26 @@
+# .gqlgen.yml example
+#
+# Refer to https://gqlgen.com/config/
+# for detailed .gqlgen.yml documentation.
+
+schema:
+- schema.graphql
+federation:
+  filename: ./generated/federation.go
+  package: generated
+exec:
+  filename: ./generated/gql_executor.go
+  package: generated
+model:
+  filename: graph/model/models_gen.go
+  package: generated
+resolver:
+  layout: follow-schema
+  dir: graphql
+  package: graphql 
+autobind: []
+
+models:
+  RecipeAppQueries:
+    model: "github.com/jpdejavite/rtg-chef/api/graphql/models.RecipeAppQueries"
+
