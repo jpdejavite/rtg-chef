@@ -84,7 +84,7 @@ type EntityResolver interface {
 	FindAppQueriesByID(ctx context.Context, id string) (*generated.AppQueries, error)
 }
 type RecipeAppQueriesResolver interface {
-	List(ctx context.Context, obj *models.RecipeAppQueries, input generated.RecipeListInput) ([]*generated.RecipeList, error)
+	List(ctx context.Context, obj *models.RecipeAppQueries, input generated.RecipeListInput) (*generated.RecipeList, error)
 }
 
 type executableSchema struct {
@@ -252,7 +252,7 @@ extend type AppQueries @key(fields: "id") {
 }
 
 type RecipeAppQueries {
-  list(input: RecipeListInput!): [RecipeList!] @hasAllRoles (roles: ["user"])
+  list(input: RecipeListInput!): RecipeList! @hasAllRoles (roles: ["user"])
 }
 
 type RecipeList {
@@ -791,18 +791,21 @@ func (ec *executionContext) _RecipeAppQueries_list(ctx context.Context, field gr
 		if tmp == nil {
 			return nil, nil
 		}
-		if data, ok := tmp.([]*generated.RecipeList); ok {
+		if data, ok := tmp.(*generated.RecipeList); ok {
 			return data, nil
 		}
-		return nil, fmt.Errorf(`unexpected type %T from directive, should be []*github.com/jpdejavite/rtg-chef/api/graphql/graph/model.RecipeList`, tmp)
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/jpdejavite/rtg-chef/api/graphql/graph/model.RecipeList`, tmp)
 	})
 
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.([]*generated.RecipeList)
+	res := resTmp.(*generated.RecipeList)
 	fc.Result = res
-	return ec.marshalORecipeList2ᚕᚖgithubᚗcomᚋjpdejaviteᚋrtgᚑchefᚋapiᚋgraphqlᚋgraphᚋmodelᚐRecipeListᚄ(ctx, field.Selections, res)
+	return ec.marshalNRecipeList2ᚖgithubᚗcomᚋjpdejaviteᚋrtgᚑchefᚋapiᚋgraphqlᚋgraphᚋmodelᚐRecipeList(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _RecipeList_total(ctx context.Context, field graphql.CollectedField, obj *generated.RecipeList) (ret graphql.Marshaler) {
@@ -2099,6 +2102,9 @@ func (ec *executionContext) _RecipeAppQueries(ctx context.Context, sel ast.Selec
 					}
 				}()
 				res = ec._RecipeAppQueries_list(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		default:
@@ -2928,46 +2934,6 @@ func (ec *executionContext) marshalORecipe2ᚕᚖgithubᚗcomᚋjpdejaviteᚋrtg
 				defer wg.Done()
 			}
 			ret[i] = ec.marshalNRecipe2ᚖgithubᚗcomᚋjpdejaviteᚋrtgᚑchefᚋapiᚋgraphqlᚋgraphᚋmodelᚐRecipe(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-	return ret
-}
-
-func (ec *executionContext) marshalORecipeList2ᚕᚖgithubᚗcomᚋjpdejaviteᚋrtgᚑchefᚋapiᚋgraphqlᚋgraphᚋmodelᚐRecipeListᚄ(ctx context.Context, sel ast.SelectionSet, v []*generated.RecipeList) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNRecipeList2ᚖgithubᚗcomᚋjpdejaviteᚋrtgᚑchefᚋapiᚋgraphqlᚋgraphᚋmodelᚐRecipeList(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)

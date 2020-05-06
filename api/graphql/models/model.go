@@ -1,7 +1,7 @@
 package models
 
 type RecipeAppQueries struct {
-	List []*RecipeList `json:"list"`
+	List RecipeList `json:"list"`
 }
 
 type RecipeList struct {

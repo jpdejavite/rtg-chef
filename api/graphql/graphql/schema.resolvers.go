@@ -11,14 +11,14 @@ import (
 	"github.com/jpdejavite/rtg-chef/api/graphql/models"
 )
 
-func (r *recipeAppQueriesResolver) List(ctx context.Context, obj *models.RecipeAppQueries, input generated.RecipeListInput) ([]*generated.RecipeList, error) {
-	return []*generated.RecipeList{&generated.RecipeList{
+func (r *recipeAppQueriesResolver) List(ctx context.Context, obj *models.RecipeAppQueries, input generated.RecipeListInput) (*generated.RecipeList, error) {
+	return &generated.RecipeList{
 		Total: 2,
 		Recipes: []*generated.Recipe{
 			&generated.Recipe{Name: "Receita 1", Description: "Descrição 1"},
 			&generated.Recipe{Name: "Receita 2", Description: "Descrição 2"},
 		},
-	}}, nil
+	}, nil
 }
 
 // RecipeAppQueries returns generated1.RecipeAppQueriesResolver implementation.

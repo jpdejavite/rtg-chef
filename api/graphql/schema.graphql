@@ -6,7 +6,7 @@ extend type AppQueries @key(fields: "id") {
 }
 
 type RecipeAppQueries {
-  list(input: RecipeListInput!): [RecipeList!] @hasAllRoles (roles: ["user"])
+  list(input: RecipeListInput!): RecipeList! @hasAllRoles (roles: ["user"])
 }
 
 type RecipeList {
