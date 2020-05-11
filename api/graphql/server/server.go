@@ -3,14 +3,15 @@ package server
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
-	"os"
 
 	"github.com/99designs/gqlgen/graphql"
 	gql "github.com/99designs/gqlgen/graphql"
+	"github.com/jpdejavite/go-log/pkg/log"
 	"github.com/jpdejavite/rtg-chef/api/graphql/generated"
 	gr "github.com/jpdejavite/rtg-chef/api/graphql/graphql"
+	"github.com/jpdejavite/rtg-chef/internal/chef/constants"
+	"github.com/jpdejavite/rtg-chef/pkg/gql-base-lib/config"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 
 	"github.com/99designs/gqlgen/graphql/handler"
@@ -120,7 +121,9 @@ func configServer() generated.Config {
 }
 
 func Start() {
-	port := fmt.Sprintf(":%s", os.Getenv("PORT"))
+	coi := log.GenerateCoi(nil)
+	config.LoadAll(constants.GetEnVarKeys())
+	port := fmt.Sprintf(":%s", config.GetEnvVar(constants.Port))
 
 	cfg := configServer()
 
@@ -147,7 +150,10 @@ func Start() {
 	router.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	router.Handle("/query", serv)
 
-	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
-	log.Fatal(http.ListenAndServe(port, router))
+	message := fmt.Sprintf("connect to http://localhost:%s/ for GraphQL playground", port)
+	log.Info("server", message, nil, coi)
+	if err := http.ListenAndServe(port, router); err != nil {
+		panic(err)
+	}
 
 }
