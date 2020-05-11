@@ -19,6 +19,8 @@ github.com/gorilla/websocket
 # github.com/hashicorp/golang-lru v0.5.0
 github.com/hashicorp/golang-lru
 github.com/hashicorp/golang-lru/simplelru
+# github.com/jpdejavite/go-log v1.0.1
+github.com/jpdejavite/go-log/pkg/log
 # github.com/mitchellh/mapstructure v1.1.2
 github.com/mitchellh/mapstructure
 # github.com/vektah/gqlparser/v2 v2.0.1
