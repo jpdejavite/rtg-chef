@@ -11,7 +11,11 @@ import (
 	"github.com/jpdejavite/rtg-chef/api/graphql/generated"
 	gr "github.com/jpdejavite/rtg-chef/api/graphql/graphql"
 	"github.com/jpdejavite/rtg-chef/internal/chef/constants"
-	"github.com/jpdejavite/rtg-chef/pkg/gql-base-lib/config"
+	"github.com/jpdejavite/rtg-go-toolkit/pkg/config"
+	"github.com/jpdejavite/rtg-go-toolkit/pkg/envvar"
+	"github.com/jpdejavite/rtg-go-toolkit/pkg/firestore"
+	"github.com/jpdejavite/rtg-go-toolkit/pkg/graphql/auth"
+	"github.com/jpdejavite/rtg-go-toolkit/pkg/graphql/errors"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 
 	"github.com/99designs/gqlgen/graphql/handler"
@@ -19,95 +23,10 @@ import (
 	"github.com/go-chi/chi"
 )
 
-// ValidateAuthorize proccess authorize directive and check resource roles against token roles
-func ValidateAuthorize(ctx context.Context, roles []*string) error {
-
-	// 	reqCred := ctx.Value("requestedCredential").(RequestedCredential)
-
-	// 	hasAnyRole := false
-	// 	userRoles := reqCred.Roles
-
-	// 	for _, reqRole := range roles {
-	// 		for _, userRole := range userRoles {
-	// 			if reqRole != nil && *reqRole == userRole {
-	// 				hasAnyRole = true
-	// 				break
-	// 			}
-	// 		}
-	// 	}
-
-	// 	if !hasAnyRole {
-	// 		return errors.New(AccessDeniedError.Code, AccessDeniedError.Message)
-	// 	}
-
-	return nil
-}
-
-// /*AddSecurityHandler extracts security credentials sent by gateway from header
-// and put into request context app using a standard struct */
-// func AddSecurityHandler(authCfg Config) func(next http.Handler) http.Handler {
-
-// 	addCtx := func(next http.Handler) http.Handler {
-// 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-// 			if r.Header.Get("gateway-authorization") == "" {
-// 				next.ServeHTTP(w, r)
-// 				return
-// 			}
-
-// 			authCfg.Token = r.Header.Get("gateway-authorization")
-
-// 			headers, err := ValidateToken(authCfg)
-
-// 			authCfg.TokenVersion = headers["version"].(string)
-
-// 			if err != nil {
-// 				smlog.Error("server.go", "AddSecurityHandler", err.Error(), "")
-// 				next.ServeHTTP(w, r)
-// 				return
-// 			}
-
-// 			reqCred := RequestedCredential{}
-// 			var ctx context.Context
-
-// 			if mapOfClaims, ok := headers["claims"]; ok == true {
-// 				claims := mapOfClaims.(map[string]interface{})
-
-// 				if claims["uid"] != nil {
-// 					uid := claims["uid"].(string)
-// 					reqCred.UserID = &uid
-// 				}
-
-// 				clientName := headers["iss"].(string)
-// 				reqCred.ClientName = &clientName
-
-// 				roles := func() []interface{} {
-// 					if claims["roles"] != nil {
-// 						return claims["roles"].([]interface{})
-// 					}
-// 					if claims["role"] != nil {
-// 						return claims["role"].([]interface{})
-// 					}
-// 					return []interface{}{}
-// 				}()
-
-// 				for _, rol := range roles {
-// 					reqCred.Roles = append(reqCred.Roles, rol.(string))
-// 				}
-// 				ctx = context.WithValue(r.Context(), "requestedCredential", reqCred)
-// 			}
-
-// 			next.ServeHTTP(w, r.WithContext(ctx))
-// 		})
-// 	}
-
-// 	return addCtx
-// }
-
 func configServer() generated.Config {
 
 	directive := func(ctx context.Context, obj interface{}, next gql.Resolver, roles []*string) (res interface{}, err error) {
-		err = ValidateAuthorize(ctx, roles)
+		err = auth.ValidateHasAllRoles(ctx, roles)
 
 		if err != nil {
 			return nil, err
@@ -120,29 +39,36 @@ func configServer() generated.Config {
 	return c
 }
 
+// Start start server
 func Start() {
 	coi := log.GenerateCoi(nil)
-	config.LoadAll(constants.GetEnVarKeys())
-	port := fmt.Sprintf(":%s", config.GetEnvVar(constants.Port))
+	envvar.LoadAll(constants.GetEnVarKeys())
+	port := fmt.Sprintf(":%s", envvar.GetEnvVar(constants.Port))
+
+	if err := firestore.ConnectToDatabase(envvar.GetEnvVar(constants.FirebaseCredential)); err != nil {
+		log.Fatal("server", "cannot connect to database", nil, coi)
+		panic(err)
+	}
+
+	if err := config.LoadGlobalConfig(); err != nil {
+		log.Fatal("server", "error loading global config", nil, coi)
+		panic(err)
+	}
 
 	cfg := configServer()
 
 	router := chi.NewRouter()
-	// authCfg := auth.Config{
-	// 	SeverinoBasicToken: fmt.Sprintf("Basic %s", jwt.CreateSeverinoToken()),
-	// 	SeverinoURL:        fmt.Sprintf("%s/config", viper.GetString("SEVERINO_URL"))}
-
-	// router.Use(AddSecurityHandler(authCfg))
+	router.Use(auth.AddSecurityHandler())
 	serv := handler.NewDefaultServer(generated.NewExecutableSchema(cfg))
 
 	serv.SetErrorPresenter(func(ctx context.Context, err error) *gqlerror.Error {
-		// if smErr, ok := err.(errors.ErrorWrapper); ok {
-		// 	gqlErr := &gqlerror.Error{
-		// 		Message:    smErr.Message,
-		// 		Extensions: map[string]interface{}{"code": smErr.Code},
-		// 	}
-		// 	return gqlErr
-		// }
+		if customError, ok := err.(errors.CustomError); ok {
+			gqlError := &gqlerror.Error{
+				Message:    customError.Message,
+				Extensions: map[string]interface{}{"code": customError.Code},
+			}
+			return gqlError
+		}
 
 		return graphql.DefaultErrorPresenter(ctx, err)
 	})
@@ -153,6 +79,9 @@ func Start() {
 	message := fmt.Sprintf("connect to http://localhost:%s/ for GraphQL playground", port)
 	log.Info("server", message, nil, coi)
 	if err := http.ListenAndServe(port, router); err != nil {
+		log.Fatal("server", "cannot listen to port", map[string]string{
+			"error": err.Error(),
+		}, coi)
 		panic(err)
 	}
 
