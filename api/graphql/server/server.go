@@ -45,12 +45,14 @@ func Start() {
 	envvar.LoadAll(constants.GetEnVarKeys())
 	port := fmt.Sprintf(":%s", envvar.GetEnvVar(constants.Port))
 
-	if err := firestore.ConnectToDatabase(envvar.GetEnvVar(constants.FirebaseCredential)); err != nil {
+	db, err := firestore.ConnectToDatabase(envvar.GetEnvVar(constants.FirebaseCredential))
+	if err != nil {
 		log.Fatal("server", "cannot connect to database", nil, coi)
 		panic(err)
 	}
 
-	if err := config.LoadGlobalConfig(); err != nil {
+	gc := config.NewGlobalConfigs(db)
+	if err := gc.LoadGlobalConfig(); err != nil {
 		log.Fatal("server", "error loading global config", nil, coi)
 		panic(err)
 	}
@@ -58,7 +60,7 @@ func Start() {
 	cfg := configServer()
 
 	router := chi.NewRouter()
-	router.Use(auth.AddSecurityHandler())
+	router.Use(auth.AddSecurityHandler(gc))
 	serv := handler.NewDefaultServer(generated.NewExecutableSchema(cfg))
 
 	serv.SetErrorPresenter(func(ctx context.Context, err error) *gqlerror.Error {

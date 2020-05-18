@@ -73,7 +73,7 @@ github.com/hashicorp/golang-lru
 github.com/hashicorp/golang-lru/simplelru
 # github.com/jpdejavite/go-log v1.0.1
 github.com/jpdejavite/go-log/pkg/log
-# github.com/jpdejavite/rtg-go-toolkit v1.0.0
+# github.com/jpdejavite/rtg-go-toolkit v1.0.2
 github.com/jpdejavite/rtg-go-toolkit/pkg/config
 github.com/jpdejavite/rtg-go-toolkit/pkg/envvar
 github.com/jpdejavite/rtg-go-toolkit/pkg/firestore
