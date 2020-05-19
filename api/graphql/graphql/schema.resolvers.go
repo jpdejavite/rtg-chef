@@ -5,13 +5,22 @@ package graphql
 
 import (
 	"context"
+	"fmt"
 
 	generated1 "github.com/jpdejavite/rtg-chef/api/graphql/generated"
 	generated "github.com/jpdejavite/rtg-chef/api/graphql/graph/model"
 	"github.com/jpdejavite/rtg-chef/api/graphql/models"
+	"github.com/jpdejavite/rtg-chef/internal/chef/constants"
+	"github.com/jpdejavite/rtg-go-toolkit/pkg/config"
+	"github.com/jpdejavite/rtg-go-toolkit/pkg/graphql/auth"
 )
 
 func (r *recipeAppQueriesResolver) List(ctx context.Context, obj *models.RecipeAppQueries, input generated.RecipeListInput) (*generated.RecipeList, error) {
+	authData, gc, c, coi := auth.GetContextInfo(ctx)
+	fmt.Println("authData", authData)
+	fmt.Println("gc", (*gc).GetGlobalConfigAsStr(config.GatewayPublicKey))
+	fmt.Println("c", (*c).GetConfigAsStr(constants.DatabaseURL))
+	fmt.Println("coi", coi)
 	return &generated.RecipeList{
 		Total: 2,
 		Recipes: []*generated.Recipe{

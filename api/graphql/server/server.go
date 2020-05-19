@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 
-	"github.com/99designs/gqlgen/graphql"
 	gql "github.com/99designs/gqlgen/graphql"
 	"github.com/jpdejavite/go-log/pkg/log"
 	"github.com/jpdejavite/rtg-chef/api/graphql/generated"
@@ -16,11 +16,17 @@ import (
 	"github.com/jpdejavite/rtg-go-toolkit/pkg/firestore"
 	"github.com/jpdejavite/rtg-go-toolkit/pkg/graphql/auth"
 	"github.com/jpdejavite/rtg-go-toolkit/pkg/graphql/errors"
-	"github.com/vektah/gqlparser/v2/gqlerror"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/go-chi/chi"
+
+	"database/sql"
+
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/lib/pq"
 )
 
 func configServer() generated.Config {
@@ -45,35 +51,51 @@ func Start() {
 	envvar.LoadAll(constants.GetEnVarKeys())
 	port := fmt.Sprintf(":%s", envvar.GetEnvVar(constants.Port))
 
-	db, err := firestore.ConnectToDatabase(envvar.GetEnvVar(constants.FirebaseCredential))
+	firestoreDB, err := firestore.ConnectToDatabase(envvar.GetEnvVar(constants.FirebaseCredential))
 	if err != nil {
 		log.Fatal("server", "cannot connect to database", nil, coi)
 		panic(err)
 	}
 
-	gc := config.NewGlobalConfigs(db)
+	gc := config.NewGlobalConfigs(firestoreDB)
 	if err := gc.LoadGlobalConfig(); err != nil {
 		log.Fatal("server", "error loading global config", nil, coi)
 		panic(err)
 	}
 
+	c := config.NewConfigs(firestoreDB)
+	if err := c.LoadConfig(constants.AppName, constants.GetConfigKeys()); err != nil {
+		log.Fatal("server", "error loading config", nil, coi)
+		panic(err)
+	}
+
+	postgresDB, err := sql.Open("postgres", c.GetConfigAsStr(constants.DatabaseURL))
+	driver, err := postgres.WithInstance(postgresDB, &postgres.Config{})
+	if err != nil {
+		log.Fatal("server", "error creating database instance", nil, coi)
+		panic(err)
+	}
+	dir, err := os.Getwd()
+	if err != nil {
+		log.Fatal("server", "error getting current dir", nil, coi)
+		panic(err)
+	}
+	m, err := migrate.NewWithDatabaseInstance(
+		fmt.Sprintf("file://%s/scripts/migration", dir),
+		"postgres", driver)
+	if err != nil {
+		log.Fatal("server", "error migrating database", nil, coi)
+		panic(err)
+	}
+	m.Steps(2)
+
 	cfg := configServer()
 
 	router := chi.NewRouter()
-	router.Use(auth.AddSecurityHandler(gc))
+	router.Use(auth.AddSecurityHandler(gc, c))
 	serv := handler.NewDefaultServer(generated.NewExecutableSchema(cfg))
 
-	serv.SetErrorPresenter(func(ctx context.Context, err error) *gqlerror.Error {
-		if customError, ok := err.(errors.CustomError); ok {
-			gqlError := &gqlerror.Error{
-				Message:    customError.Message,
-				Extensions: map[string]interface{}{"code": customError.Code},
-			}
-			return gqlError
-		}
-
-		return graphql.DefaultErrorPresenter(ctx, err)
-	})
+	serv.SetErrorPresenter(errors.HandleGraphqlError())
 
 	router.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	router.Handle("/query", serv)
